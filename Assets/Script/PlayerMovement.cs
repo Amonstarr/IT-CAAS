@@ -1,20 +1,30 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
-[RequireComponent(typeof(Rigidbody2D))]
 public class PlayerMovement : MonoBehaviour
 {
-    [Header("Movement Settings")]
-    public float moveSpeed = 5f;
-    public float jumpForce = 8f;
-
-    [Header("Ground Check")]
-    public Transform groundCheck;
-    public float groundRadius = 0.2f;
-    public LayerMask groundLayer;
-
+    private PlayerControls controls;
     private Rigidbody2D rb;
+    private Vector2 moveInput;
+    public float moveSpeed = 5f;
+    public float jumpForce = 7f;
     private bool isGrounded;
-    private bool facingRight = true;
+
+    [SerializeField] private Transform groundCheck;
+    [SerializeField] private LayerMask groundLayer;
+
+    void Awake()
+    {
+        controls = new PlayerControls();
+
+        controls.Player.Move.performed += ctx => moveInput = ctx.ReadValue<Vector2>();
+        controls.Player.Move.canceled += ctx => moveInput = Vector2.zero;
+
+        controls.Player.Jump.performed += ctx => Jump();
+    }
+
+    void OnEnable() => controls.Player.Enable();
+    void OnDisable() => controls.Player.Disable();
 
     void Start()
     {
@@ -23,34 +33,19 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
-        // Gerakan kiri-kanan
-        float moveInput = Input.GetAxisRaw("Horizontal");
-        rb.velocity = new Vector2(moveInput * moveSpeed, rb.velocity.y);
+        rb.velocity = new Vector2(moveInput.x * moveSpeed, rb.velocity.y);
+    }
 
-        // Flip arah karakter
-        if (moveInput > 0 && !facingRight) Flip();
-        else if (moveInput < 0 && facingRight) Flip();
-
-        // Cek tanah
-        GroundCheck();
-
-        // Lompat
-        if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
+    void Jump()
+    {
+        if (IsGrounded())
         {
             rb.velocity = new Vector2(rb.velocity.x, jumpForce);
         }
     }
 
-    void GroundCheck()
+    bool IsGrounded()
     {
-        isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundRadius, groundLayer);
-    }
-
-    void Flip()
-    {
-        facingRight = !facingRight;
-        Vector3 scale = transform.localScale;
-        scale.x *= -1;
-        transform.localScale = scale;
+        return Physics2D.OverlapCircle(groundCheck.position, 0.1f, groundLayer);
     }
 }
